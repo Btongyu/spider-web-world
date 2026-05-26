@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abyssal Web World</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden; /* 隐藏滚动条 */
+            background-color: #020203; /* 极暗的冷色调背景 */
+        }
+        /* 确保 JS 动态生成的 canvas 铺满屏幕 */
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <script type="module" src="./main.js"></script>
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abyssal Web World</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { overflow: hidden; background: #020203; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+
+        /* ── Bottom explore hint ── */
+        #hint {
+            position: fixed; bottom: 26px; left: 50%;
+            transform: translateX(-50%);
+            color: rgba(140, 165, 210, 0.45);
+            font-family: 'Helvetica Neue', sans-serif;
+            font-size: 11px; letter-spacing: 3px;
+            pointer-events: none; z-index: 5;
+            transition: opacity 0.6s;
+        }
+
+        /* ── Crosshair ── */
+        #crosshair {
+            position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 18px; height: 18px;
+            pointer-events: none; z-index: 5;
+        }
+        #crosshair::before, #crosshair::after {
+            content: ''; position: absolute;
+            background: rgba(160, 185, 230, 0.4);
+        }
+        #crosshair::before { width: 100%; height: 1px; top: 50%; }
+        #crosshair::after  { width: 1px; height: 100%; left: 50%; }
+
+        /* ── Click to inspect ── */
+        #click-hint {
+            position: fixed; top: calc(50% + 28px); left: 50%;
+            transform: translateX(-50%);
+            color: rgba(180, 210, 255, 0);
+            font-family: 'Helvetica Neue', sans-serif;
+            font-size: 10px; letter-spacing: 3px;
+            pointer-events: none; z-index: 5;
+            transition: color 0.35s;
+        }
+        #click-hint.visible { color: rgba(180, 210, 255, 0.7); }
+
+        /* ── Object name label (detail view) ── */
+        #obj-label {
+            position: fixed; top: 34px; left: 50%;
+            transform: translateX(-50%);
+            color: rgba(210, 225, 255, 0);
+            font-family: 'Helvetica Neue', sans-serif;
+            font-size: 11px; letter-spacing: 5px; text-transform: uppercase;
+            pointer-events: none; z-index: 5;
+            transition: color 0.6s;
+        }
+        #obj-label.visible { color: rgba(210, 225, 255, 0.6); }
+
+        /* ── W key disperse hint ── */
+        #w-hint {
+            position: fixed; bottom: 60px; left: 50%;
+            transform: translateX(-50%);
+            display: flex; flex-direction: column; align-items: center; gap: 9px;
+            pointer-events: none; z-index: 5;
+            opacity: 0; transition: opacity 0.5s;
+        }
+        #w-hint.visible { opacity: 1; }
+        .key-box {
+            width: 38px; height: 38px;
+            border: 1.5px solid rgba(180, 210, 255, 0.45);
+            border-radius: 5px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; font-weight: 300;
+            color: rgba(180, 210, 255, 0.7);
+            font-family: 'Helvetica Neue', sans-serif;
+            animation: key-pulse 1.3s ease-in-out infinite;
+        }
+        .key-label {
+            font-family: 'Helvetica Neue', sans-serif;
+            font-size: 9px; letter-spacing: 3px;
+            color: rgba(180, 210, 255, 0.45);
+        }
+        @keyframes key-pulse {
+            0%,100% { border-color:rgba(180,210,255,.3); box-shadow:none; color:rgba(180,210,255,.5); }
+            50%      { border-color:rgba(180,210,255,.95); box-shadow:0 0 14px rgba(140,180,255,.45); color:#fff; }
+        }
+
+        /* ── Dispersing status ── */
+        #disperse-status {
+            position: fixed; bottom: 60px; left: 50%;
+            transform: translateX(-50%);
+            color: rgba(200, 225, 255, 0);
+            font-family: 'Helvetica Neue', sans-serif;
+            font-size: 10px; letter-spacing: 4px;
+            pointer-events: none; z-index: 5;
+            transition: color 0.4s;
+        }
+        #disperse-status.visible { color: rgba(200, 225, 255, 0.5); }
+    </style>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+    <div id="hint">W A S D · EXPLORE &nbsp;|&nbsp; CLICK · INSPECT</div>
+    <div id="crosshair"></div>
+    <div id="click-hint">CLICK TO INSPECT</div>
+    <div id="obj-label"></div>
+    <div id="w-hint">
+        <div class="key-box">W</div>
+        <div class="key-label">DISPERSE</div>
+    </div>
+    <div id="disperse-status">DISPERSING</div>
+    <script type="module" src="./main.js"></script>
+</body>
+</html>
