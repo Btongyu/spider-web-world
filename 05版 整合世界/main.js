@@ -112,7 +112,8 @@ function buildModelAt(def, xPos, yPos, zPos) {
             uProgress:        { value: 0.0 },
             uMaxProgressSeen: { value: 0.0 },
             uTime:            { value: 0.0 },
-            uGlowColor:       { value: new THREE.Color(def.color) }
+            uGlowColor:       { value: new THREE.Color(def.color) },
+            uFade:            { value: 1.0 }
         };
 
         const dustPos = [], dustRnd = [], dustDir = [], dustSz = [];
@@ -168,6 +169,7 @@ function buildModelAt(def, xPos, yPos, zPos) {
                 shader.uniforms.uMaxProgressSeen = gu.uMaxProgressSeen;
                 shader.uniforms.uTime            = gu.uTime;
                 shader.uniforms.uGlowColor       = gu.uGlowColor;
+                shader.uniforms.uFade            = gu.uFade;
 
                 shader.vertexShader = `
                     uniform float uProgress;
@@ -198,12 +200,13 @@ function buildModelAt(def, xPos, yPos, zPos) {
                 shader.fragmentShader = `
                     varying float vDisp;
                     uniform vec3  uGlowColor;
+                    uniform float uFade;
                 ` + shader.fragmentShader;
 
                 shader.fragmentShader = shader.fragmentShader.replace('#include <dithering_fragment>', `
                     #include <dithering_fragment>
                     gl_FragColor.rgb = mix(gl_FragColor.rgb, uGlowColor*3., vDisp);
-                    gl_FragColor.a  *= 1. - vDisp*.5;
+                    gl_FragColor.a  *= (1. - vDisp*.5) * uFade;
                 `);
             };
             child.material = mat;
@@ -222,10 +225,11 @@ function buildModelAt(def, xPos, yPos, zPos) {
                     uProgress:        gu.uProgress,
                     uMaxProgressSeen: gu.uMaxProgressSeen,
                     uTime:            gu.uTime,
-                    uColor:           { value: new THREE.Color(def.color) }
+                    uColor:           { value: new THREE.Color(def.color) },
+                    uFade:            gu.uFade
                 },
                 vertexShader: `
-                    uniform float uProgress, uMaxProgressSeen, uTime;
+                    uniform float uProgress, uMaxProgressSeen, uTime, uFade;
                     attribute float aRandom; attribute vec3 aDirection; attribute float aSize;
                     varying float vA;
                     ${NOISE_GLSL}
@@ -240,7 +244,7 @@ function buildModelAt(def, xPos, yPos, zPos) {
                         gl_PointSize = aSize*(5.0/-mv.z);
                         gl_Position  = projectionMatrix*mv;
                         float br = sin(uTime*.55+position.x*18.+position.y*9.);
-                        vA = ease*(0.12+0.28*br);
+                        vA = ease*(0.12+0.28*br)*uFade;
                     }`,
                 fragmentShader: `
                     uniform vec3 uColor; varying float vA;
@@ -293,15 +297,15 @@ let tgtX = 0, tgtZ = camera.position.z;
 const savedCamPos = new THREE.Vector3();
 const zoomTarget  = new THREE.Vector3();
 
-// Track dispersed colors for layer injection
-const dispersedColors      = [];
-const colorParticleSystems = [];
+// Track dispersal completion
+let dispersedCount = 0;
 
 const $hint    = document.getElementById('hint');
 const $click   = document.getElementById('click-hint');
 const $label   = document.getElementById('obj-label');
 const $wHint   = document.getElementById('w-hint');
 const $disping = document.getElementById('disperse-status');
+const $fadeOverlay = document.getElementById('fade-overlay');
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  INPUT
@@ -359,11 +363,40 @@ function startDisperse() {
     $disping.classList.add('visible');
 }
 
+function createPermanentParticleField(hexColor) {
+    const n = 500;
+    const pos = new Float32Array(n * 3);
+    const totalZ = LAYER_COUNT * LAYER_SPACING; // 12 * 18 = 216
+    for (let i = 0; i < n; i++) {
+        pos[i*3]   = (Math.random() - 0.5) * 80;
+        pos[i*3+1] = (Math.random() - 0.5) * 60;
+        pos[i*3+2] = 20 - Math.random() * (totalZ + 40);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    const mat = new THREE.PointsMaterial({
+        color: new THREE.Color(hexColor),
+        size: 0.32,
+        transparent: true, opacity: 0.72,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+        sizeAttenuation: true
+    });
+    scene.add(new THREE.Points(geo, mat));
+}
+
 function finishDisperse() {
     if (activeModel.disperseFired) return;
     activeModel.disperseFired = true;
     activeModel.dispersed = true;
-    dispersedColors.push(activeModel.def.color);   // register color for future layers
+
+    // Permanent color particle field spread throughout all space
+    createPermanentParticleField(activeModel.def.color);
+
+    dispersedCount++;
+    if (dispersedCount >= MODEL_DEFS.length) {
+        // All 6 dispersed — fade to black after a short pause
+        setTimeout(() => { $fadeOverlay.classList.add('active'); }, 3000);
+    }
 
     setTimeout(() => {
         appState = 'zoomOut';
@@ -385,29 +418,11 @@ function respawnModel(mo) {
     // Reset dispersion fully
     mo.gu.uProgress.value        = 0;
     mo.gu.uMaxProgressSeen.value = 0;
+    mo.gu.uFade.value            = 1;
     mo.disperseProgress = 0;
     mo.disperseFired    = false;
     mo.dispersed        = false;
-}
-
-function spawnColorLayer(hexColor, zPos) {
-    const n = 280;
-    const pos = new Float32Array(n * 3);
-    for (let i = 0; i < n; i++) {
-        pos[i*3]   = (Math.random()-.5) * 32;
-        pos[i*3+1] = (Math.random()-.5) * 24;
-        pos[i*3+2] = zPos + (Math.random()-.5) * LAYER_SPACING * 0.9;
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    const mat = new THREE.PointsMaterial({
-        color: new THREE.Color(hexColor), size: 0.11,
-        transparent: true, opacity: 0.75,
-        blending: THREE.AdditiveBlending, depthWrite: false
-    });
-    const pts = new THREE.Points(geo, mat);
-    scene.add(pts);
-    colorParticleSystems.push({ pts, age: 0, life: 20 });
+    mo.group.visible    = true;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -475,6 +490,14 @@ function animate() {
         if (activeModel.disperseProgress >= 1.0) finishDisperse();
     }
 
+    // ── Fade out fully dispersed models
+    modelObjects.forEach(mo => {
+        if (mo.dispersed && mo.gu.uFade.value > 0) {
+            mo.gu.uFade.value = Math.max(0, mo.gu.uFade.value - dt * 0.6);
+            if (mo.gu.uFade.value <= 0) mo.group.visible = false;
+        }
+    });
+
     // ── Hover detection (explore mode only)
     let hoverWorldPos = null;
     if (appState === 'explore') {
@@ -512,19 +535,12 @@ function animate() {
         layer.update(elapsed, mouseWorld, dissolvePos);
         const cycle = LAYER_COUNT * LAYER_SPACING;
 
-        let recycled = false;
         if (camera.position.z < layer.position.z - 10) {
             layer.position.z -= cycle;
             layer.rotation.z += 1.0;
-            recycled = true;
         } else if (camera.position.z > layer.position.z + cycle - 10) {
             layer.position.z += cycle;
             layer.rotation.z -= 1.0;
-            recycled = true;
-        }
-        if (recycled && dispersedColors.length > 0 && Math.random() < 0.60) {
-            const c = dispersedColors[Math.floor(Math.random() * dispersedColors.length)];
-            spawnColorLayer(c, layer.position.z);
         }
     });
 
@@ -533,14 +549,6 @@ function animate() {
         if (mo === activeModel) return;
         if (mo.worldPos.z > camera.position.z + RESPAWN_BEHIND) respawnModel(mo);
     });
-
-    // ── Color particle cloud fadeout
-    for (let i = colorParticleSystems.length - 1; i >= 0; i--) {
-        const cp = colorParticleSystems[i];
-        cp.age += dt;
-        cp.pts.material.opacity = 0.75 * Math.max(0, 1 - cp.age / cp.life);
-        if (cp.age >= cp.life) { scene.remove(cp.pts); colorParticleSystems.splice(i, 1); }
-    }
 
     renderer.render(scene, camera);
 }
