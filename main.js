@@ -23,7 +23,7 @@ const MODEL_DEFS = [
     { name: 'Headset',  file: 'headset.glb',   targetSize: 1.6, color: 0xFBFDFD },
     { name: 'Medicine', file: 'medicine.glb',  targetSize: 1.5, color: 0xA4FF4F },
     { name: 'Tire',     file: 'tire.glb',      targetSize: 2.0, color: 0x00FFFF },
-    { name: 'Lunchbox', file: 'lunchbox.wglb', targetSize: 1.6, color: 0xEF72EC, compressed: true },
+    { name: 'Lunchbox', file: 'lunchbox.gz',   targetSize: 1.6, color: 0xEF72EC, compressed: true },
 ];
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -287,9 +287,8 @@ function buildModelAt(def, xPos, yPos, zPos) {
         fetch(url)
             .then(r => r.arrayBuffer())
             .then(ab => {
-                const gz = new Uint8Array(ab, 8); // skip 8-byte "WGLB\x01..." header
                 return new Response(
-                    new Blob([gz]).stream().pipeThrough(new DecompressionStream('gzip'))
+                    new Blob([new Uint8Array(ab)]).stream().pipeThrough(new DecompressionStream('gzip'))
                 ).arrayBuffer();
             })
             .then(buf => loader.parse(buf, '', onLoad, onError))
