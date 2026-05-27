@@ -15,7 +15,7 @@ const DETAIL_FOV     = 36;       // telephoto zoom
 const DETAIL_DIST    = 4.0;      // camera offset from model in detail view
 const DISPERSE_RATE  = 0.11;     // progress per second → ~9s full dispersion
 const RESPAWN_BEHIND = 42;       // recycle model when this far behind camera
-const RELEASE_BASE   = 'https://github.com/Btongyu/spider-web-world/releases/download/v1.0/';
+const RELEASE_BASE   = './';
 
 const MODEL_DEFS = [
     { name: 'Bottle',   file: 'bottle.glb',    targetSize: 1.6, color: 0xF0FF0A },
