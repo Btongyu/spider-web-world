@@ -15,14 +15,15 @@ const DETAIL_FOV     = 36;       // telephoto zoom
 const DETAIL_DIST    = 4.0;      // camera offset from model in detail view
 const DISPERSE_RATE  = 0.11;     // progress per second → ~9s full dispersion
 const RESPAWN_BEHIND = 42;       // recycle model when this far behind camera
+const RELEASE_BASE   = 'https://github.com/Btongyu/spider-web-world/releases/download/v1.0/';
 
 const MODEL_DEFS = [
-    { name: 'Bottle',   file: '水瓶.glb',   targetSize: 1.6, color: 0xF0FF0A },
-    { name: 'Crocs',    file: '洞洞鞋.glb', targetSize: 1.8, color: 0xf88bb1 },
-    { name: 'Headset',  file: '耳机.glb',   targetSize: 1.6, color: 0xFBFDFD },
-    { name: 'Medicine', file: '药罐.glb',   targetSize: 1.5, color: 0xA4FF4F },
-    { name: 'Tire',     file: '轮胎.glb',   targetSize: 2.0, color: 0x00FFFF },
-    { name: 'Lunchbox', file: '饭盒.glb',   targetSize: 1.6, color: 0xEF72EC },
+    { name: 'Bottle',   file: 'bottle.glb',    targetSize: 1.6, color: 0xF0FF0A },
+    { name: 'Crocs',    file: 'crocs.glb',     targetSize: 1.8, color: 0xf88bb1 },
+    { name: 'Headset',  file: 'headset.glb',   targetSize: 1.6, color: 0xFBFDFD },
+    { name: 'Medicine', file: 'medicine.glb',  targetSize: 1.5, color: 0xA4FF4F },
+    { name: 'Tire',     file: 'tire.glb',      targetSize: 2.0, color: 0x00FFFF },
+    { name: 'Lunchbox', file: 'lunchbox.wglb', targetSize: 1.6, color: 0xEF72EC, compressed: true },
 ];
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -98,7 +99,10 @@ const modelObjects = [];
 const loader = new GLTFLoader();
 
 function buildModelAt(def, xPos, yPos, zPos) {
-    loader.load(`./${def.file}`, (gltf) => {
+    const url     = RELEASE_BASE + def.file;
+    const onError = e => console.error(`Failed to load ${def.file}`, e);
+
+    const onLoad = (gltf) => {
         // Normalize size and center
         const rawBox = new THREE.Box3().setFromObject(gltf.scene);
         const rawSize = rawBox.getSize(new THREE.Vector3()).length();
@@ -276,7 +280,23 @@ function buildModelAt(def, xPos, yPos, zPos) {
             disperseFired: false,   // setTimeout guard
             dispersed: false
         });
-    }, undefined, e => console.error(`Failed to load ${def.file}`, e));
+    };   // end onLoad
+
+    if (def.compressed) {
+        // Fetch WGLB (gzip wrapped), decompress with browser-native DecompressionStream
+        fetch(url)
+            .then(r => r.arrayBuffer())
+            .then(ab => {
+                const gz = new Uint8Array(ab, 8); // skip 8-byte "WGLB\x01..." header
+                return new Response(
+                    new Blob([gz]).stream().pipeThrough(new DecompressionStream('gzip'))
+                ).arrayBuffer();
+            })
+            .then(buf => loader.parse(buf, '', onLoad, onError))
+            .catch(onError);
+    } else {
+        loader.load(url, onLoad, undefined, onError);
+    }
 }
 
 // Initial placement: distributed across early layers
